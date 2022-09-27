@@ -18,8 +18,9 @@ import time
 import unittest
 from datetime import datetime
 from email.utils import make_msgid
+from typing import Union, Optional, Tuple, Any
 
-from imapclient.config import parse_config_file, create_client_from_config
+from imapclient.config import parse_config_file, create_client_from_config, Bunch
 from imapclient.exceptions import IMAPClientError
 from imapclient.fixed_offset import FixedOffset
 from imapclient.imapclient import (
@@ -82,8 +83,12 @@ Content-Type: text/plain; charset="UTF-8"
 
 class _TestBase(unittest.TestCase):
 
-    conf = None
+    conf: Optional[Bunch] = None
     use_uid = True
+    client: IMAPClient
+    condstore_enabled: bool
+    base_folder: str
+    folder_delimiter: str
 
     @classmethod
     def setUpClass(cls):
@@ -94,6 +99,7 @@ class _TestBase(unittest.TestCase):
         if client.has_capability("ENABLE") and client.has_capability("CONDSTORE"):
             client.enable("CONDSTORE")
             cls.condstore_enabled = True
+        assert cls.conf is not None
         cls.base_folder = cls.conf.namespace[0] + "__imapclient"
         cls.folder_delimiter = cls.conf.namespace[1]
 
@@ -118,6 +124,7 @@ class _TestBase(unittest.TestCase):
             self.skipTest("Server doesn't support %s" % name)
 
     def just_folder_names(self, dat):
+        gmail_special_prefix: Union[bytes, str]
         if self.client.folder_encode:
             gmail_special_prefix = "["
         else:
@@ -216,6 +223,7 @@ class TestGeneral(_TestBase):
 
     def test_alternates(self):
         # Check alternate connection/login configurations.
+        assert self.conf is not None
         for name, conf in self.conf.alternates.items():
             try:
                 client = create_client_from_config(conf)
@@ -559,7 +567,7 @@ class TestSocketTimeout(unittest.TestCase):
     altering other tests suite.
     """
 
-    conf = None
+    conf: Optional[Bunch] = None
 
     def setUp(self):
         self.client = None
@@ -569,6 +577,7 @@ class TestSocketTimeout(unittest.TestCase):
             quiet_logout(self.client)
 
     def test_small_connection_timeout_fail(self):
+        assert self.conf is not None
         self.conf.timeout = SocketTimeout(connect=0.001, read=10)
         with self.assertRaises(socket.timeout):
             self.client = create_client_from_config(self.conf)
@@ -579,6 +588,7 @@ class TestSocketTimeout(unittest.TestCase):
         test pass, we don't login once connected but simply try a 'noop', that
         should not be able to complete in under a such a small time.
         """
+        assert self.conf is not None
         self.conf.timeout = SocketTimeout(connect=30, read=0.00001)
         self.client = create_client_from_config(self.conf, login=False)
         with self.assertRaises(socket.timeout):
@@ -686,6 +696,7 @@ def createUidTestClass(conf, use_uid):
             # Add some test messages
             msg_tmpl = "Subject: %s\r\n\r\nBody"
             subjects = ("a", "b", "c")
+            flags: Tuple[bytes, ...]
             for subject in subjects:
                 msg = msg_tmpl % subject
                 if subject == "c":
@@ -996,6 +1007,7 @@ def createUidTestClass(conf, use_uid):
             # since we can't predicate what the server we're testing against
             # will return.
 
+            expected: Any
             expected = (
                 b"text",
                 b"plain",
@@ -1159,7 +1171,7 @@ def argv_error(msg):
     sys.exit(1)
 
 
-def parse_argv():
+def parse_argv() -> Bunch:
     args = sys.argv[1:]
     if not args:
         argv_error(

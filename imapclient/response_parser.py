@@ -14,6 +14,17 @@ Initially inspired by http://effbot.org/zone/simple-iterator-parser.htm
 import re
 import sys
 from collections import defaultdict
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    TYPE_CHECKING,
+    Union,
+    Iterator,
+    Iterable,
+)
 
 from .datetime_util import parse_to_datetime
 from .response_lexer import TokenSource
@@ -79,7 +90,11 @@ def parse_message_list(data):
     return ids
 
 
-def gen_parsed_response(text):
+Atom = Union[None, bytes, int]
+Atoms = Union[Atom, Tuple[Atom, ...]]
+
+
+def gen_parsed_response(text: List[bytes]) -> Iterator[Atoms]:
     if not text:
         return
     src = TokenSource(text)
@@ -104,8 +119,10 @@ def parse_fetch_response(text, normalise_times=True, uid_is_key=True):
     if text == [None]:
         return {}
     response = gen_parsed_response(text)
+    for resp in response:
+        raise ValueError(f"JLV: {type(resp)} {resp!r}, {text!r}")
 
-    parsed_response = defaultdict(dict)
+    parsed_response: Dict[int, Dict[bytes, Any]] = defaultdict(dict)
     while True:
         try:
             msg_id = seq = _int_or_error(next(response), "invalid message ID")
@@ -126,9 +143,12 @@ def parse_fetch_response(text, normalise_times=True, uid_is_key=True):
 
         # always return the sequence of the message, so it is available
         # even if we return keyed by UID.
-        msg_data = {b"SEQ": seq}
+        msg_data: Dict[bytes, Atoms] = {b"SEQ": seq}
         for i in range(0, len(msg_response), 2):
-            word = msg_response[i].upper()
+            word = msg_response[i]
+            assert word is not None
+            assert not isinstance(word, int)
+            word = word.upper()
             value = msg_response[i + 1]
 
             if word == b"UID":
@@ -151,7 +171,7 @@ def parse_fetch_response(text, normalise_times=True, uid_is_key=True):
     return parsed_response
 
 
-def _int_or_error(value, error_text):
+def _int_or_error(value, error_text) -> int:
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -180,7 +200,7 @@ def _convert_ENVELOPE(envelope_response, normalise_times=True):
 
     # addresses contains a tuple of addresses
     # from, sender, reply_to, to, cc, bcc headers
-    addresses = []
+    addresses: List[Optional[Tuple[Address, ...]]] = []
     for addr_list in envelope_response[2:8]:
         addrs = []
         if addr_list:
@@ -196,11 +216,11 @@ def _convert_ENVELOPE(envelope_response, normalise_times=True):
         subject,
         *addresses,
         in_reply_to=envelope_response[8],
-        message_id=envelope_response[9]
+        message_id=envelope_response[9],
     )
 
 
-def atom(src, token):
+def atom(src: TokenSource, token: bytes) -> Atoms:
     if token == b"(":
         return parse_tuple(src)
     elif token == b"NIL":
@@ -225,8 +245,9 @@ def atom(src, token):
         return token
 
 
-def parse_tuple(src):
-    out = []
+# def parse_tuple(src: TokenSource) -> Tuple[Union[None, bytes, int], ...]:
+def parse_tuple(src: TokenSource) -> Atoms:
+    out: List[Atoms] = []
     for token in src:
         if token == b")":
             return tuple(out)

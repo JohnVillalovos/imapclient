@@ -6,11 +6,12 @@
 
 import argparse
 from getpass import getpass
+from typing import Union
 
-from .config import parse_config_file, create_client_from_config, get_config_defaults
+import imapclient.config as config
 
 
-def command_line():
+def command_line() -> Union[argparse.Namespace, config.Bunch]:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-H", "--host", dest="host", action="store", help="IMAP host connect to"
@@ -78,7 +79,7 @@ def command_line():
         ):
             parser.error("If -f/--file is given no other options can be used")
         # Use the options in the config file
-        args = parse_config_file(args.file)
+        args = config.parse_config_file(args.file)
         return args
 
     args.ssl = not args.insecure
@@ -86,7 +87,7 @@ def command_line():
     # Scan through arguments, filling in defaults and prompting when
     # a compulsory argument wasn't provided.
     compulsory_args = ("host", "username", "password")
-    for name, default_value in get_config_defaults().items():
+    for name, default_value in config.get_config_defaults().items():
         value = getattr(args, name, default_value)
         if name in compulsory_args and value is None:
             value = getpass(name + ": ")
@@ -98,29 +99,29 @@ def command_line():
 def main():
     args = command_line()
     print("Connecting...")
-    client = create_client_from_config(args)
+    client = config.create_client_from_config(args)
     print("Connected.")
     banner = '\nIMAPClient instance is "c"'
 
     def ptpython(c):
-        from ptpython.repl import embed
+        from ptpython.repl import embed  # type: ignore
 
         embed(globals(), locals())
 
     def ipython_400(c):
-        from IPython.terminal.embed import InteractiveShellEmbed
+        from IPython.terminal.embed import InteractiveShellEmbed  # type: ignore
 
         ipshell = InteractiveShellEmbed(banner1=banner)
         ipshell("")
 
     def ipython_011(c):
-        from IPython.frontend.terminal.embed import InteractiveShellEmbed
+        from IPython.frontend.terminal.embed import InteractiveShellEmbed  # type: ignore
 
         ipshell = InteractiveShellEmbed(banner1=banner)
         ipshell("")
 
     def ipython_010(c):
-        from IPython.Shell import IPShellEmbed
+        from IPython.Shell import IPShellEmbed  # type: ignore
 
         IPShellEmbed("", banner=banner)()
 

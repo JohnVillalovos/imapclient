@@ -8,20 +8,21 @@
 # Other variations and examples can be found in the RFC 3501, section 5.1.3.
 
 import binascii
+from typing import List
 
 
-def encode(s):
+def encode(s: str) -> bytes:
     """Encode a folder name using IMAP modified UTF-7 encoding.
 
-    Input is unicode; output is bytes (Python 3) or str (Python 2). If
-    non-unicode input is provided, the input is returned unchanged.
+    Input is unicode; output is bytes (Python 3). If non-unicode input is
+    provided, the input is returned unchanged.
     """
     if not isinstance(s, str):
         return s
 
     res = bytearray()
 
-    b64_buffer = []
+    b64_buffer: List[str] = []
 
     def consume_b64_buffer(buf):
         """

@@ -11,7 +11,7 @@ from .fixed_offset import FixedOffset
 _SHORT_MONTHS = " Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ")
 
 
-def parse_to_datetime(timestamp, normalise=True):
+def parse_to_datetime(timestamp: bytes, normalise: bool = True) -> datetime:
     """Convert an IMAP datetime string to a datetime.
 
     If normalise is True (the default), then the returned datetime
@@ -57,8 +57,8 @@ def datetime_to_INTERNALDATE(dt):
 _rfc822_dotted_time = re.compile(r"\w+, ?\d{1,2} \w+ \d\d(\d\d)? \d\d?\.\d\d?\.\d\d?.*")
 
 
-def _munge(s):
-    s = s.decode("latin-1")  # parsedate_tz only works with strings
+def _munge(byte_str: bytes) -> str:
+    s = byte_str.decode("latin-1")  # parsedate_tz only works with strings
     if _rfc822_dotted_time.match(s):
         return s.replace(".", ":")
     return s

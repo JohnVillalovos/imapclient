@@ -36,7 +36,7 @@ def get_config_defaults():
     )
 
 
-def parse_config_file(filename):
+def parse_config_file(filename) -> Bunch:
     """Parse INI files containing IMAP connection details.
 
     Used by livetest.py and interact.py
@@ -69,7 +69,7 @@ def get_string_config_defaults():
     return out
 
 
-def _read_config_section(parser, section):
+def _read_config_section(parser, section) -> Bunch:
     def get(name):
         return parser.get(section, name)
 

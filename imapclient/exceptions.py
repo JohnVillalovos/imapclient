@@ -9,7 +9,8 @@ IMAPClientError = imaplib.IMAP4.error
 IMAPClientAbortError = imaplib.IMAP4.abort
 IMAPClientReadOnlyError = imaplib.IMAP4.readonly
 
-
+# NOTE(jlvillal): These type-hint issues will be resolved when the next version
+# of `mypy` is released. Fixed by https://github.com/python/typeshed/pull/8095
 class CapabilityError(IMAPClientError):
     """
     The command tried by the user needs a capability not installed

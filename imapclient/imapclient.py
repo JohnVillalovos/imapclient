@@ -14,6 +14,7 @@ from collections import namedtuple
 from datetime import datetime, date
 from operator import itemgetter
 from logging import LoggerAdapter, getLogger
+from typing import Union, List, Optional, Tuple
 
 from . import exceptions
 from . import imap4
@@ -301,7 +302,14 @@ class IMAPClient(object):
             except Exception as e:
                 logger.info("Could not close the connection cleanly: %s", e)
 
-    def _create_IMAP4(self):
+    def _create_IMAP4(self) -> Union[imaplib.IMAP4_stream, imap4.IMAP4WithTimeout, tls.IMAP4_TLS]:
+        reveal_type(imaplib.IMAP4_stream(self.host))
+        reveal_type(tls.IMAP4_TLS(
+                self.host,
+                self.port,
+                self.ssl_context,
+                connect_timeout,
+            ))
         if self.stream:
             return imaplib.IMAP4_stream(self.host)
 
@@ -639,8 +647,9 @@ class IMAPClient(object):
         See :rfc:`2342` for more details.
         """
         data = self._command_and_check("namespace")
-        parts = []
+        parts: List[Optional[Tuple]] = []
         for item in parse_response(data):
+            reveal_type(item)
             if item is None:
                 parts.append(item)
             else:
@@ -950,6 +959,7 @@ class IMAPClient(object):
                         # An imaplib.IMAP4.abort with "EOF" is raised
                         # under Python 3
                         err = sys.exc_info()[1]
+                        assert err is not None
                         if "EOF" in err.args[0]:
                             break
                         else:
@@ -1607,13 +1617,16 @@ class IMAPClient(object):
 
     def _consume_until_tagged_response(self, tag, command):
         tagged_commands = self._imap.tagged_commands
+        reveal_type(tagged_commands)
         resps = []
         while True:
             line = self._imap._get_response()
             if tagged_commands[tag]:
                 break
             resps.append(_parse_untagged_response(line))
-        typ, data = tagged_commands.pop(tag)
+        pop_value = tagged_commands.pop(tag)
+        assert pop_value is not None
+        typ, data = pop_value
         self._checkok(command, typ, data)
         return data[0], resps
 
@@ -1717,6 +1730,8 @@ class IMAPClient(object):
         if uid and self.use_uid:
             command = to_unicode(command)  # imaplib must die
             typ, data = self._imap.uid(command, *args)
+            reveal_type(self._imap)
+            reveal_type(data)
         else:
             meth = getattr(self._imap, to_unicode(command))
             typ, data = meth(*args)
@@ -1896,7 +1911,7 @@ def _maybe_int_to_bytes(val):
     return to_bytes(val)
 
 
-def _parse_untagged_response(text):
+def _parse_untagged_response(text: bytes):
     assert_imap_protocol(text.startswith(b"* "))
     text = text[2:]
     if text.startswith((b"OK ", b"NO ")):
